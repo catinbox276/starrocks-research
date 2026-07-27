@@ -35,22 +35,53 @@
 
 StarRocks는 Milvus(proxy/query/data/index node 분리)나 OpenSearch(노드 롤 지정)와 달리 **FE + BE(또는 CN)의 2계층 고정 구조**다. 배포 모드는 계층 2에 무엇을 쓰느냐로 갈린다.
 
-```
-                 클라이언트 (MySQL 프로토콜)
-                        │
-        ┌───────────────▼────────────────┐
-        │  계층 1 — FE (두뇌 계층)          │
-        │  SQL 파싱·플래닝 / 메타데이터(Raft) │
-        │  Leader / Follower / Observer   │
-        └───────────────┬────────────────┘
-                        │ 실행 계획(Fragment) 분배
-        ┌───────────────▼────────────────┐
-        │  계층 2 — BE 또는 CN             │
-        └─────────────────────────────────┘
+**Shared-Nothing (FE + BE) — 벡터 인덱스 지원 모드**
 
-  [Shared-Nothing]              [Shared-Data]  ← ★ 현재 우리 환경
-   BE = 연산 + 저장               CN = 연산 전용(무상태, 캐시만)
-   데이터가 BE 로컬 디스크에         데이터는 오브젝트 스토리지(S3 등)에
+```mermaid
+flowchart TB
+    C["클라이언트 (MySQL 프로토콜 / BI 툴 / 앱)"]
+    C --> T1
+    subgraph T1["계층 1 — FE : SQL 파싱·플래닝 / 메타데이터(Raft) / 조율"]
+        direction LR
+        L["FE Leader<br/>메타데이터 읽기/쓰기"]
+        F["FE Follower<br/>읽기 + 선출 참여"]
+        O["FE Observer(선택)<br/>읽기 전용, 동시성 확장"]
+    end
+    T1 -->|"실행 계획(Fragment) 분배"| T2
+    subgraph T2["계층 2 — BE : 연산 + 저장 (데이터가 로컬 디스크에)"]
+        direction LR
+        B1[("BE 1<br/>Tablet + 벡터 인덱스<br/>+ GIN 역색인")]
+        B2[("BE 2<br/>Tablet + 벡터 인덱스<br/>+ GIN 역색인")]
+        B3[("BE 3<br/>Tablet + 벡터 인덱스<br/>+ GIN 역색인")]
+    end
+    style T2 fill:#d5e8d4,stroke:#82b366
+    style T1 fill:#dae8fc,stroke:#6c8ebf
+```
+
+**Shared-Data (FE + CN) — ★ 현재 우리 환경**
+
+```mermaid
+flowchart TB
+    C["클라이언트 (MySQL 프로토콜 / BI 툴 / 앱)"]
+    C --> T1
+    subgraph T1["계층 1 — FE : SQL 파싱·플래닝 / 메타데이터(Raft) / 조율"]
+        direction LR
+        L["FE Leader"]
+        F["FE Follower"]
+        O["FE Observer(선택)"]
+    end
+    T1 -->|"실행 계획(Fragment) 분배"| T2
+    subgraph T2["계층 2 — CN : 무상태 연산 전용 (로컬엔 캐시만, 탄력 확장)"]
+        direction LR
+        N1["CN 1<br/>쿼리 실행 + 캐시"]
+        N2["CN 2<br/>쿼리 실행 + 캐시"]
+        N3["CN N ...<br/>Auto-scaling"]
+    end
+    T2 -->|"읽기/쓰기 (캐시 미스 시 로드)"| S3
+    S3[("오브젝트 스토리지 S3/MinIO/HDFS<br/>데이터 단일 사본 + GIN 역색인(4.1+ Beta)<br/>⚠️ 벡터 인덱스 미지원")]
+    style T2 fill:#ffe6cc,stroke:#d79b00
+    style T1 fill:#dae8fc,stroke:#6c8ebf
+    style S3 fill:#e1d5e7,stroke:#9673a6
 ```
 
 ### 계층 1 — FE (Frontend)
@@ -132,11 +163,25 @@ StarRocks는 Milvus(proxy/query/data/index node 분리)나 OpenSearch(노드 롤
 
 **동작 구조** (한국어 형태소 처리는 [`02-tokenizer-fulltext-search.md`](./02-tokenizer-fulltext-search.md)의 외부 주입 패턴):
 
-```
-[적재]  원문 → 형태소 분석기(mecab-ko/Kiwi/Nori) → "한글 검색 하다" (어근 공백분리)
-        → content_tokenized 컬럼 INSERT → GIN 색인
-[검색]  사용자 질의 → 같은 분석기로 토큰화 → [한글, 검색]
-        → 키워드별 MATCH → 매칭 키워드 수 = 순위
+```mermaid
+flowchart LR
+    subgraph ingest["적재 파이프라인"]
+        direction LR
+        A["원문<br/>'한글 검색을 합니다'"] --> M1["형태소 분석기<br/>mecab-ko / Kiwi / Nori"]
+        M1 --> TK["'한글 검색 하다'<br/>(어근 공백분리)"]
+    end
+    TK -->|"content_tokenized 컬럼 INSERT"| G
+    G[("StarRocks GIN 역색인<br/>parser=standard, imp_lib=builtin<br/>현 FE+CN에서 동작 ✅")]
+    subgraph search["검색 (챗봇 백엔드)"]
+        direction LR
+        Q["사용자 질의<br/>'한글 검색'"] --> M2["같은 형태소 분석기<br/>(수 ms, 행렬연산 없음)"]
+        M2 --> KW["토큰: 한글, 검색"]
+    end
+    KW -->|"키워드별 MATCH (역색인 recall)"| G
+    G --> R["매칭 키워드 수 COUNT<br/>ORDER BY hits DESC<br/>= 검색 순위"]
+    style G fill:#e1d5e7,stroke:#9673a6
+    style ingest fill:#d5e8d4,stroke:#82b366
+    style search fill:#ffe6cc,stroke:#d79b00
 ```
 
 ```sql
