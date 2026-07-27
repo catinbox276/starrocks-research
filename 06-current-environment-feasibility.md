@@ -209,16 +209,92 @@ ORDER BY t.hits DESC, d.id DESC   -- 동률은 최신순 등 보조 정렬
 LIMIT 10;
 ```
 
-**적재(INSERT) 예시** — 핵심은 INSERT 전에 형태소 분석을 마쳐서 `content_tokenized`에 함께 넣는 것:
+**적재(INSERT) 예시** — 핵심은 INSERT 전에 형태소 분석을 마쳐서 `content_tokenized`에 함께 넣는 것.
+
+> **형태소 분해는 띄어쓰기 기준이 아니다.** 2단계 구조:
+> 1. **형태소 분석기(Kiwi/mecab)** — 사전 기반이라 띄어쓰기와 무관하게 어절 내부를 분해한다: `"결제가"` → `결제`+`가`(조사 분리), `"실패했습니다"` → `실패`+`하다`(어미 복원)
+> 2. **StarRocks standard 파서** — 이것은 공백 기준이다. 그래서 1단계 결과(어근들)를 **일부러 공백으로 이어붙여 저장**하면, StarRocks는 공백만 잘라도 어근 단위로 색인된다
+>
+> 즉 "띄어쓰기 기준 색인"이라는 StarRocks의 한계를, 적재 전에 어근을 공백 분리 형태로 만들어 우회하는 것이 이 패턴의 본질이다.
+
+원문 → 저장 토큰 대응이 바로 보이는 예시:
+
+| id | content (원문) | content_tokenized (저장 토큰) | 변환 포인트 |
+|----|----------------|------------------------------|-------------|
+| 1 | 결제가 실패했습니다 | `결제 실패 하다` | 조사 `가` 제거, `했습니다`→`하다` |
+| 2 | 결제 오류로 환불을 요청합니다 | `결제 오류 환불 요청 하다` | 조사 `로`/`을` 제거 |
+| 3 | 로그인이 안 됩니다 | `로그인 안 되다` | 조사 `이` 제거, `됩니다`→`되다` |
 
 ```sql
 -- 소량/테스트용: INSERT INTO VALUES
 INSERT INTO documents (id, content, content_tokenized) VALUES
-    (1, '한글 검색을 합니다',        '한글 검색 하다'),
-    (2, 'StarRocks 벡터 인덱스 조사', 'starrocks 벡터 인덱스 조사'),
-    (3, '하이브리드 검색이 필요하다',  '하이브리드 검색 필요 하다');
--- ※ english/standard 파서는 검색어가 소문자여야 하므로 영문 토큰은 소문자로 넣는다
+    (1, '결제가 실패했습니다',          '결제 실패 하다'),
+    (2, '결제 오류로 환불을 요청합니다', '결제 오류 환불 요청 하다'),
+    (3, '로그인이 안 됩니다',           '로그인 안 되다');
+-- ※ english/standard 파서는 검색어가 소문자여야 하므로 영문 토큰은 소문자로 넣는다 (예: 'StarRocks' → 'starrocks')
 ```
+
+이 데이터로 검색하면 — 질의 `"결제 실패"` → 토큰 `[결제, 실패]`:
+
+| id | `결제` 매칭 | `실패` 매칭 | hits | 순위 |
+|----|:---:|:---:|:---:|:---:|
+| 1 | ✅ | ✅ | 2 | **1위** |
+| 2 | ✅ | ❌ | 1 | 2위 |
+| 3 | ❌ | ❌ | 0 | 제외 |
+
+원문이 `"결제가"`, `"실패했습니다"`였어도 어근으로 색인해뒀기 때문에 `결제`, `실패`로 정확히 매칭된다 — 이것이 조사/어미 우회의 효과다.
+
+**구현 범위 선별 — 난이도 대비 효과 기준**
+
+| 항목 | 판정 | 이유 |
+|------|:----:|------|
+| 단일 컬럼(어근 공백분리) + GIN + hit-count 랭킹 | ✅ **1단계 채택** | 위에서 정리한 기본형. 이것만으로 조사/어미 문제 해결 |
+| **불용어 제거** (`하다`/`되다`/`있다` 등) | ✅ **1단계 채택** | tokenize() 함수에 리스트 한 줄 추가 — 난이도 거의 0인데 노이즈 감소 효과 큼 |
+| 품사별 컬럼 분리 + 명사 가중 랭킹 (아래) | ⏸ **보류 (2단계)** | 컬럼·인덱스·질의 SQL이 전부 2배로 복잡해짐. 1단계 순위 품질이 아쉬울 때만 |
+| 수제 TF-IDF (`ARRAY` 컬럼 + 사전 테이블) | ⏸ 보류 | 배치 관리 부담. 2단계로도 부족할 때 검토 |
+| 동의어 사전 | ⏸ 보류 | 사전 구축·유지 비용. 운영하며 미스매치 사례가 쌓인 뒤에 |
+
+1단계 불용어 제거는 위 Python `tokenize()`에 두 줄만 추가하면 된다:
+
+```python
+STOPWORDS = {'하다', '되다', '있다', '없다', '이다'}
+tokens = [t for t in tokens if t not in STOPWORDS]
+```
+
+**(보류) 2단계 개선 옵션 — 품사별 컬럼 분리 + 명사 가중 랭킹**
+
+한국어에서 의미의 핵심은 **명사**가 담는다. 반면 `하다`/`되다` 같은 기능성 동사는 거의 모든 문서에 등장해 변별력이 없다(위 예시에서 id 1·2 모두 `하다` 보유). 그래서 품사별로 컬럼을 나눠 명사 매칭에 가중치를 주면 순위 품질이 올라간다:
+
+```sql
+CREATE TABLE documents (
+    id BIGINT,
+    content STRING,            -- 원본 (표시용)
+    content_tokenized STRING,  -- 전체 어근 (명사+동사+형용사) — recall용
+    content_nouns STRING,      -- ★ 명사만 — 가중 랭킹용
+    INDEX idx_tok  (content_tokenized) USING GIN("parser"="standard", "imp_lib"="builtin"),
+    INDEX idx_noun (content_nouns)     USING GIN("parser"="standard", "imp_lib"="builtin")
+) ENGINE=OLAP DUPLICATE KEY(id)
+DISTRIBUTED BY HASH(id)
+PROPERTIES ("replicated_storage"="false");
+
+-- 적재: (1, '결제가 실패했습니다', '결제 실패 하다', '결제 실패')
+
+-- 랭킹: 명사 매칭 ×2 가중 + 전체 매칭 ×1
+SELECT d.id, d.content, t.score
+FROM (
+    SELECT id, SUM(w) AS score FROM (
+        SELECT id, 2 AS w FROM documents WHERE content_nouns     MATCH '결제'
+        UNION ALL
+        SELECT id, 2 AS w FROM documents WHERE content_nouns     MATCH '실패'
+        UNION ALL
+        SELECT id, 1 AS w FROM documents WHERE content_tokenized MATCH '하다'
+    ) m GROUP BY id
+) t JOIN documents d ON d.id = t.id
+ORDER BY t.score DESC
+LIMIT 10;
+```
+
+2단계로 갈 때의 팁: 질의 토큰화 때도 품사 정보를 그대로 활용 — 질의의 명사는 `content_nouns`로, 나머지는 `content_tokenized`로 매칭시키면 위 SQL이 자연스럽게 구성된다.
 
 실전 파이프라인(Python, MySQL 프로토콜 — FE 쿼리 포트 9030):
 
