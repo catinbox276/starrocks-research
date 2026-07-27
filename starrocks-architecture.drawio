@@ -1,0 +1,204 @@
+<mxfile host="65bd71144e">
+    <diagram id="shared-nothing" name="Shared-Nothing (FE+BE) 2계층">
+        <mxGraphModel dx="1086" dy="403" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="1000" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="StarRocks Shared-Nothing 2계층 아키텍처 (FE + BE) — 벡터 인덱스 지원 모드" style="text;html=1;fontSize=18;fontStyle=1;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="150" y="20" width="800" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="client" value="클라이언트 (MySQL 프로토콜 / BI 툴 / 앱)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="400" y="80" width="300" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="tier1" value="계층 1 — FE (두뇌 계층): SQL 파싱·플래닝 / 메타데이터(Raft) / 클러스터 조율" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;fontSize=13;fontStyle=1;container=1;collapsible=0;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="180" width="860" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="fe1" value="FE Leader&lt;br&gt;메타데이터 읽기/쓰기&lt;br&gt;(Raft 선출)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="tier1" vertex="1">
+                    <mxGeometry x="40" y="45" width="230" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="fe2" value="FE Follower&lt;br&gt;메타데이터 읽기 전용&lt;br&gt;+ Leader 선출 참여" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="tier1" vertex="1">
+                    <mxGeometry x="315" y="45" width="230" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="fe3" value="FE Observer (선택)&lt;br&gt;메타데이터 읽기 전용&lt;br&gt;선출 불참 — 쿼리 동시성 확장용" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;dashed=1;" parent="tier1" vertex="1">
+                    <mxGeometry x="590" y="45" width="230" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="tier2" value="계층 2 — BE (저장 + 연산 계층): 데이터 저장·쿼리 실행·인덱스 구축을 한 노드가 전부 수행" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;fontSize=13;fontStyle=1;container=1;collapsible=0;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="410" width="860" height="330" as="geometry"/>
+                </mxCell>
+                <mxCell id="be1" value="BE 1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;verticalAlign=top;fontStyle=1;container=1;collapsible=0;" parent="tier2" vertex="1">
+                    <mxGeometry x="40" y="45" width="245" height="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="disk1" value="로컬 디스크&lt;br&gt;• Tablet 데이터&lt;br&gt;• 벡터 인덱스 (HNSW/IVFPQ)&lt;br&gt;• GIN 역색인" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=11;" parent="be1" vertex="1">
+                    <mxGeometry x="25" y="55" width="195" height="125" as="geometry"/>
+                </mxCell>
+                <mxCell id="be2" value="BE 2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;verticalAlign=top;fontStyle=1;container=1;collapsible=0;" parent="tier2" vertex="1">
+                    <mxGeometry x="310" y="45" width="245" height="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="disk2" value="로컬 디스크&lt;br&gt;• Tablet 데이터&lt;br&gt;• 벡터 인덱스 (HNSW/IVFPQ)&lt;br&gt;• GIN 역색인" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=11;" parent="be2" vertex="1">
+                    <mxGeometry x="25" y="55" width="195" height="125" as="geometry"/>
+                </mxCell>
+                <mxCell id="be3" value="BE 3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;verticalAlign=top;fontStyle=1;container=1;collapsible=0;" parent="tier2" vertex="1">
+                    <mxGeometry x="580" y="45" width="245" height="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="disk3" value="로컬 디스크&lt;br&gt;• Tablet 데이터&lt;br&gt;• 벡터 인덱스 (HNSW/IVFPQ)&lt;br&gt;• GIN 역색인" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=11;" parent="be3" vertex="1">
+                    <mxGeometry x="25" y="55" width="195" height="125" as="geometry"/>
+                </mxCell>
+                <mxCell id="rg" value="Resource Group (논리적 격리) — 같은 BE 노드들 위에서 사용자/쿼리 유형별 CPU·메모리·동시성 칸막이 (예: BI용 / ETL용). 물리 노드 분리는 아님" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f7e8;strokeColor=#82b366;dashed=1;fontSize=11;align=left;spacingLeft=10;" parent="tier2" vertex="1">
+                    <mxGeometry x="40" y="265" width="785" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1" value="SQL 요청 / 결과" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;" parent="1" source="client" target="tier1" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2" value="실행 계획(Fragment) 분배 / 결과 수집" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;" parent="1" source="tier1" target="tier2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="note1" value="✅ 벡터 인덱스는 이 모드에서만 지원 (v3.4+, 실험 기능: enable_experimental_vector = true, 테이블당 1개)&lt;br&gt;✅ GIN 역색인 v3.3+ — 임베딩·하이브리드 검색은 이 구성 선택&lt;br&gt;ℹ️ Milvus/OpenSearch식 색인·적재·쿼리 노드 분리는 없음 — 확장은 BE 노드 추가(수평 확장) + Resource Group" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="780" width="860" height="90" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="shared-data" name="Shared-Data (FE+CN) 2계층">
+        <mxGraphModel dx="1086" dy="403" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="1050" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title2" value="StarRocks Shared-Data 2계층 아키텍처 (FE + CN) — 저장은 계층 밖(오브젝트 스토리지)으로 분리" style="text;html=1;fontSize=18;fontStyle=1;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="20" width="900" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="client2" value="클라이언트 (MySQL 프로토콜 / BI 툴 / 앱)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="400" y="80" width="300" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="tier21" value="계층 1 — FE (두뇌 계층): SQL 파싱·플래닝 / 메타데이터(Raft) / 클러스터 조율" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;fontSize=13;fontStyle=1;container=1;collapsible=0;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="180" width="860" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="fe21" value="FE Leader&lt;br&gt;메타데이터 읽기/쓰기&lt;br&gt;(Raft 선출)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="tier21" vertex="1">
+                    <mxGeometry x="40" y="45" width="230" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="fe22" value="FE Follower&lt;br&gt;메타데이터 읽기 전용&lt;br&gt;+ Leader 선출 참여" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="tier21" vertex="1">
+                    <mxGeometry x="315" y="45" width="230" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="fe23" value="FE Observer (선택)&lt;br&gt;메타데이터 읽기 전용&lt;br&gt;선출 불참 — 쿼리 동시성 확장용" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;dashed=1;" parent="tier21" vertex="1">
+                    <mxGeometry x="590" y="45" width="230" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="tier22" value="계층 2 — CN (연산 전용 계층): 무상태, 로컬엔 캐시만 / 노드 즉시 증감 (탄력 확장)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;verticalAlign=top;fontSize=13;fontStyle=1;container=1;collapsible=0;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="410" width="860" height="250" as="geometry"/>
+                </mxCell>
+                <mxCell id="cg1" value="Compute Group A (예: BI/대시보드)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;verticalAlign=top;fontSize=11;fontStyle=1;container=1;collapsible=0;" parent="tier22" vertex="1">
+                    <mxGeometry x="40" y="45" width="380" height="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="cn11" value="CN 1&lt;br&gt;쿼리 실행&lt;br&gt;+ 로컬 캐시" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ee;strokeColor=#d79b00;fontSize=11;" parent="cg1" vertex="1">
+                    <mxGeometry x="25" y="40" width="155" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="cn12" value="CN 2&lt;br&gt;쿼리 실행&lt;br&gt;+ 로컬 캐시" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ee;strokeColor=#d79b00;fontSize=11;" parent="cg1" vertex="1">
+                    <mxGeometry x="200" y="40" width="155" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="cg2" value="Compute Group B (예: ETL/적재) — Multi-Warehouse, 4.0+ OSS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;verticalAlign=top;fontSize=11;fontStyle=1;container=1;collapsible=0;dashed=1;" parent="tier22" vertex="1">
+                    <mxGeometry x="445" y="45" width="380" height="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="cn21" value="CN 3&lt;br&gt;쿼리 실행&lt;br&gt;+ 로컬 캐시" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ee;strokeColor=#d79b00;fontSize=11;" parent="cg2" vertex="1">
+                    <mxGeometry x="25" y="40" width="155" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="cn22" value="CN N ...&lt;br&gt;(Auto-scaling)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ee;strokeColor=#d79b00;fontSize=11;dashed=1;" parent="cg2" vertex="1">
+                    <mxGeometry x="200" y="40" width="155" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="storage2" value="공유 스토리지 (계층 밖) — 오브젝트 스토리지 (S3 / MinIO / GCS / HDFS)&lt;br&gt;• 전체 데이터 단일 사본 — 모든 Compute Group이 같은 데이터를 공유&lt;br&gt;• GIN 역색인 (4.1+ built-in, Beta)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=left;spacingLeft=20;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="730" width="600" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="e21" value="SQL 요청 / 결과" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;" parent="1" source="client2" target="tier21" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e22" value="실행 계획(Fragment) 분배 / 결과 수집" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;" parent="1" source="tier21" target="tier22" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e23" value="읽기/쓰기 (캐시 미스 시 로드)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;" parent="1" source="tier22" target="storage2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="note2" value="❌ 벡터 인덱스 미지원 (2026 로드맵 계획만 존재) → 임베딩 검색 목적이면 이 모드 선택 불가&lt;br&gt;✅ GIN 역색인은 4.1+ Beta / ✅ Compute Group(Multi-Warehouse)으로 물리적 워크로드 격리 가능 (이 모드 전용, 4.0+ OSS)&lt;br&gt;장점: 스토리지 비용 절감(단일 사본) + 연산 탄력 확장 — 순수 분석 워크로드에 적합" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="900" width="860" height="90" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="scaling-compare" name="BE vs CN 확장 비교">
+        <mxGraphModel dx="1086" dy="524" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1250" pageHeight="1000" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="scTitle" value="가로 확장(Scale-Out) 비교 — 핵심 차이는 &quot;가능/불가능&quot;이 아니라 &quot;데이터 재분배 비용&quot;" style="text;html=1;fontSize=18;fontStyle=1;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="125" y="20" width="1000" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="scBePanel" value="BE (Shared-Nothing) — 가로 확장 ✅ 되지만 무겁다" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;fontSize=14;fontStyle=1;container=1;collapsible=0;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="90" width="560" height="480" as="geometry"/>
+                </mxCell>
+                <mxCell id="scBe1" value="BE 1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;verticalAlign=top;fontStyle=1;container=1;collapsible=0;" parent="scBePanel" vertex="1">
+                    <mxGeometry x="30" y="60" width="150" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="scBeDisk1" value="로컬 디스크&lt;br&gt;Tablet 1~50" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" parent="scBe1" vertex="1">
+                    <mxGeometry x="20" y="45" width="110" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="scBe2" value="BE 2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;verticalAlign=top;fontStyle=1;container=1;collapsible=0;" parent="scBePanel" vertex="1">
+                    <mxGeometry x="210" y="60" width="150" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="scBeDisk2" value="로컬 디스크&lt;br&gt;Tablet 51~100" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" parent="scBe2" vertex="1">
+                    <mxGeometry x="20" y="45" width="110" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="scBe3" value="BE 3 (신규 추가)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;verticalAlign=top;fontStyle=1;container=1;collapsible=0;dashed=1;" parent="scBePanel" vertex="1">
+                    <mxGeometry x="390" y="60" width="150" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="scBeDisk3" value="로컬 디스크&lt;br&gt;(비어 있음 → 채워야 함)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;dashed=1;" parent="scBe3" vertex="1">
+                    <mxGeometry x="20" y="45" width="110" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="scBeArrow1" value="Tablet 재분배&#10;(수 시간)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#b85450;strokeWidth=2;dashed=1;fontColor=#b85450;" parent="scBePanel" source="scBe1" target="scBe3" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="105" y="250"/>
+                            <mxPoint x="465" y="250"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="scBeArrow2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#b85450;strokeWidth=2;dashed=1;" parent="scBePanel" source="scBe2" target="scBe3" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="285" y="240"/>
+                            <mxPoint x="465" y="240"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="scBeNote" value="노드 추가는 되지만…&lt;br&gt;• 기존 노드의 데이터(Tablet)를 새 노드로 옮기는 재분배 필요 → 수 시간 + 네트워크/디스크 부하&lt;br&gt;• 저장·연산이 묶여 확장 — 연산만/저장만 따로 못 늘림&lt;br&gt;• 축소(scale-in)는 더 부담 — 나가는 노드의 데이터를 전부 빼내야 함&lt;br&gt;→ 처음부터 노드 수·디스크를 여유 있게 설계 권장" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=12;" parent="scBePanel" vertex="1">
+                    <mxGeometry x="30" y="320" width="510" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="scCnPanel" value="CN (Shared-Data) — 가로 확장 ✅ 즉각적·탄력적" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;verticalAlign=top;fontSize=14;fontStyle=1;container=1;collapsible=0;" parent="1" vertex="1">
+                    <mxGeometry x="650" y="90" width="560" height="480" as="geometry"/>
+                </mxCell>
+                <mxCell id="scCn1" value="CN 1&lt;br&gt;무상태&lt;br&gt;(캐시만)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=11;" parent="scCnPanel" vertex="1">
+                    <mxGeometry x="30" y="60" width="150" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="scCn2" value="CN 2&lt;br&gt;무상태&lt;br&gt;(캐시만)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=11;" parent="scCnPanel" vertex="1">
+                    <mxGeometry x="210" y="60" width="150" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="scCn3" value="CN 3 (신규)&lt;br&gt;몇 초~몇 분 내 투입&lt;br&gt;옮길 데이터 없음" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=11;dashed=1;" parent="scCnPanel" vertex="1">
+                    <mxGeometry x="390" y="60" width="150" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="scS3" value="오브젝트 스토리지 (S3 / MinIO ...) — 데이터 단일 사본, 그대로 있음 (사실상 무한 확장)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=15;" parent="scCnPanel" vertex="1">
+                    <mxGeometry x="90" y="200" width="390" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="scCnArrow1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9673a6;" parent="scCnPanel" source="scCn1" target="scS3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="scCnArrow2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9673a6;" parent="scCnPanel" source="scCn2" target="scS3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="scCnArrow3" value="캐시 워밍만" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9673a6;dashed=1;fontSize=11;" parent="scCnPanel" source="scCn3" target="scS3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="scCnNote" value="데이터가 전부 S3에 있어 노드가 무상태 →&lt;br&gt;• 노드 추가 시 옮길 데이터 없음 — 캐시만 다시 데워지면 끝 (auto-scaling 실용적)&lt;br&gt;• 저장(S3)과 연산(CN)을 독립적으로 따로 확장&lt;br&gt;• 축소는 그냥 종료하면 됨&lt;br&gt;⚠️ 단, 벡터 인덱스 미지원 — 임베딩 검색이면 이 모드 선택 불가" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=12;" parent="scCnPanel" vertex="1">
+                    <mxGeometry x="30" y="320" width="510" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="scTable" value="&lt;b&gt;정리&lt;/b&gt;&lt;br&gt;&lt;br&gt;세로 확장(사양↑) — BE ✅ / CN ✅&lt;br&gt;가로 확장(노드 추가) — BE ✅ 데이터 재분배 필요(느리고 무거움) / CN ✅ 데이터 이동 없음(초 단위, 탄력적)&lt;br&gt;저장·연산 독립 확장 — BE ❌ 항상 같이 늘어남 / CN ✅ 각각 따로&lt;br&gt;축소(scale-in) — BE 부담 큼(데이터 빼내야 함) / CN 쉬움(그냥 종료)&lt;br&gt;벡터 인덱스 — BE ✅ / CN ❌" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;spacingLeft=15;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="610" width="1170" height="170" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
