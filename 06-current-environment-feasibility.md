@@ -209,6 +209,59 @@ ORDER BY t.hits DESC, d.id DESC   -- 동률은 최신순 등 보조 정렬
 LIMIT 10;
 ```
 
+**적재(INSERT) 예시** — 핵심은 INSERT 전에 형태소 분석을 마쳐서 `content_tokenized`에 함께 넣는 것:
+
+```sql
+-- 소량/테스트용: INSERT INTO VALUES
+INSERT INTO documents (id, content, content_tokenized) VALUES
+    (1, '한글 검색을 합니다',        '한글 검색 하다'),
+    (2, 'StarRocks 벡터 인덱스 조사', 'starrocks 벡터 인덱스 조사'),
+    (3, '하이브리드 검색이 필요하다',  '하이브리드 검색 필요 하다');
+-- ※ english/standard 파서는 검색어가 소문자여야 하므로 영문 토큰은 소문자로 넣는다
+```
+
+실전 파이프라인(Python, MySQL 프로토콜 — FE 쿼리 포트 9030):
+
+```python
+from kiwipiepy import Kiwi
+import pymysql
+
+kiwi = Kiwi()
+
+def tokenize(text: str) -> str:
+    """명사(NN*)/동사(VV)/형용사(VA) 어근만 추출해 공백 분리 + 소문자화.
+    검색 시에도 반드시 이 함수를 그대로 사용한다."""
+    tokens = [t.form for t in kiwi.tokenize(text)
+              if t.tag.startswith(('NN', 'VV', 'VA'))]
+    return ' '.join(tokens).lower()
+
+conn = pymysql.connect(host='<FE_HOST>', port=9030,
+                       user='<USER>', password='<PW>', db='<DB>')
+rows = [(1, '한글 검색을 합니다'), (2, 'StarRocks 벡터 인덱스 조사')]
+with conn.cursor() as cur:
+    cur.executemany(
+        "INSERT INTO documents (id, content, content_tokenized) VALUES (%s, %s, %s)",
+        [(i, c, tokenize(c)) for i, c in rows])
+conn.commit()
+```
+
+대량 적재는 Stream Load(HTTP) 권장 — CSV/JSON을 형태소 분석 후 파일로 만들어 밀어넣는다:
+
+```bash
+curl --location-trusted -u <USER>:<PW> \
+     -H "label:docs_load_20260727_001" \
+     -H "column_separator:|" \
+     -H "columns: id, content, content_tokenized" \
+     -T docs.csv \
+     http://<FE_HOST>:8030/api/<DB>/documents/_stream_load
+```
+
+**적재 시 유의점**:
+
+- StarRocks의 INSERT는 건당 하나의 적재 트랜잭션이다. **한 건씩 반복 INSERT하면 버전이 과다 생성되어 compaction 부담** → 배치(수백~수천 건)로 묶어서 넣을 것 (`executemany` 또는 Stream Load)
+- 지속 유입(스트림)이라면 Kafka 연동 **Routine Load**가 정석 — 단, 이 경우에도 형태소 분석은 Kafka에 넣기 전 프로듀서 쪽에서 수행
+- 기존 데이터 백필: 원본 테이블에 `content_tokenized` 컬럼을 추가한 뒤, 외부에서 형태소 분석한 결과를 위 방법으로 재적재하거나 `INSERT INTO new_table SELECT ...` + 앱단 변환으로 이관
+
 각 MATCH가 역색인을 타므로 recall이 빠르고, 랭킹(COUNT)은 후보에 대해서만 계산된다. 키워드 5~10개 수준이면 UNION 팬아웃 부담도 없다.
 
 **옵션 3의 우려와 비교**: 질의 시점에 챗봇 백엔드가 하는 일은 형태소 분석 한 번뿐(수 ms, 행렬 연산 없음). 임베딩 모델 같은 CPU 과부하·OOM 위험이 없고, 무거운 recall·랭킹은 전부 StarRocks가 담당한다.
